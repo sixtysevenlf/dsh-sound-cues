@@ -419,6 +419,38 @@ $node = "D:\DSH DESKTOP\resources\runtime\primary-runtime\dependencies\node\bin\
 
 这个心跳是浏览器侧 `apply()` 时 POST 到 `/sound-cues/hello` 打的，不依赖 DevTools。
 
+### 后台 / 最小化时到底响不响？看 `config.__diag`
+
+浏览器半边每真的收到一条 cue，就会往 `/sound-cues/config` 回报一条 `__diag`：
+
+```jsonc
+"config": { "__diag": {
+  "count": 63,              // 这一轮网页半边总共收到几条 cue
+  "lastCue": "tool.start",
+  "lastCueId": 515,
+  "at": 1790868... ,        // 收到时刻（毫秒）
+  "hidden": true,           // 收到时窗口是不是在后台
+  "visibility": "hidden",
+  "audio": "running"        // AudioContext 的状态
+}}
+```
+
+这三行合起来能把「后台不响」拆成两个互斥的原因：
+
+| 现象 | 结论 |
+|---|---|
+| `count` 不涨 | **没送到** —— 长轮询在后台被掐了 |
+| `count` 涨 + `hidden: true` + `audio: "running"` | **送到了、也能出声** |
+| `count` 涨 + `hidden: true` + `audio: "suspended"` | 送到了，但音频上下文没解锁 —— 在窗口里点一下即可 |
+
+**实测结论（本机 DSH 桌面版）**：窗口隐藏时 `hidden: true` / `visibility: "hidden"`，
+`count` 仍在增长，`audio: "running"` —— 后台能收到也能响。
+原因是 cue 走 HTTP 长轮询，回调属于**网络事件**，Chromium 的后台节流只掐
+`setTimeout` 这类定时器；而本插件的轮询是 promise 链式、不依赖定时器。
+
+> ⚠ 唯一的坑：页面**本次加载后从没被点过**时，Chromium 的自动播放策略会让
+> AudioContext 停在 `suspended`。窗口里点一下就解锁了。
+
 也可以打开浏览器 DevTools 控制台看：
 
 ```
