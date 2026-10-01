@@ -1,0 +1,18 @@
+# 依赖与构建产物
+node_modules/
+
+# 运行时落盘的东西 —— 属于「你这台机器上的状态」，不是源码
+state.json
+state.json.bak-*
+*.bak-*
+
+# 用户自己上传的音效：体积大、且可能是有版权的音频，不该进仓库
+assets/custom/*
+!assets/custom/.gitkeep
+
+# 编辑器 / 系统噪音
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

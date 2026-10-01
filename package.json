@@ -1,0 +1,34 @@
+{
+  "name": "dsh-sound-cues",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DSH 声音提示插件：把 DSH 的各种状态变成听得见的提示音 —— 任务失败放《关羽之歌》，goal 目标达成放《We Are the Champions》；支持用户自定义音效文件，并在 DSH 设置界面里逐条配置。",
+  "type": "module",
+  "main": "./lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "assets",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [],
+      "immediately": true
+    }
+  },
+  "license": "MIT"
+}

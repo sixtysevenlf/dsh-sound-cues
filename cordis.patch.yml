@@ -1,0 +1,15 @@
+# dsh-sound-cues bundle 层 —— 插入一条**顶层**宿主插件行。
+#
+# 为什么必须是顶层行：`@deepseek-ai/dsh-client-modules` 的宿主半边只扫描
+# **enabled 的顶层 Loader 条目**来组合浏览器启动图。挂在 preset 的
+# config.plugins 之类**嵌套行**里的插件，它扫不到，本包的 `dsh.client`
+# 就永远不会被服务成浏览器 bundle —— 表现是「设置界面里没有提示音这一页」，
+# 而且**不报任何错**。（本机 dsh-divination-108 踩过同一个坑。）
+#
+# 另：**不要**再把 dsh-sound-cues 作为独立插件行写进 profile 的
+# cordis.patch.yml —— 同一个 id 在 bundle 层和 profile 层各插一次会触发
+# 重复注册。只保留本文件这一处。
+- insert:
+    - id: dsh-sound-cues
+      name: 'dsh-sound-cues'
+      config: {}

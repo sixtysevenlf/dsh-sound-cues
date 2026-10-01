@@ -1,0 +1,9 @@
+# 换行统一成 LF：这是一个跨 Windows / WSL / macOS 都要能跑的插件
+* text=auto eol=lf
+
+# 二进制素材不要做任何转换
+*.jpg binary
+*.png binary
+*.mid binary
+*.mp3 binary
+*.wav binary
