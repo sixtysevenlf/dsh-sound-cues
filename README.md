@@ -1,12 +1,19 @@
 # dsh-sound-cues 🔊
 
+[![repo](https://img.shields.io/badge/GitHub-sixtysevenlf%2Fdsh--sound--cues-blue)](https://github.com/sixtysevenlf/dsh-sound-cues)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
 把 **DSH 的各种状态变成听得见的提示音**的插件：
 
-- 🎻 **任务失败 → 《关羽之歌》**（《江上行》，王健词 / 谷建芬曲，94 版《三国演义》插曲）
-- 🎉 **goal 目标达成 → 《We Are the Champions》**（Queen，副歌主题）
+- 🎻 **任务失败 → 《关羽之歌》**（《江上行》，王健词 / 谷建芬曲，94 版《三国演义》插曲）**高潮句**
+- 🎉 **goal 目标达成 → 《We Are the Champions》**（Queen）**副歌**
 - 外加 **37 条**覆盖回合 / 工具 / 目标 / 审批 / 后台作业 / 子代理 / 任务板 / 工作流 / 系统的提示音
+- **每条提示音都能单独设音量**（0–150%，与主音量两层相乘）
 - 支持 **用户自定义音效**：上传自己的 mp3/wav/ogg/m4a，绑定到任意一条提示音
 - 设置界面就长在 **DSH 设置里**（侧栏「设置 → 提示音」）
+- **免构建**：宿主与浏览器两半都是手写 JS，不需要 tsc / tsdown / pnpm
+
+> 装法见 [五、安装](#五安装)。已经在本地活着的 DSH 上实测生效。
 
 ---
 
@@ -249,7 +256,61 @@ DSH 客户端确实有一流的可观察对象层（`ctx.sessions.list`、
 
 ---
 
-## 五、安装（已完成）
+## 五、安装
+
+### 5.1 你在别处装（三步）
+
+```powershell
+# 0) 前提：DSH 桌面版。把仓库放到任意位置，例如 D:\DSH\plugins\dsh-sound-cues
+git clone https://github.com/sixtysevenlf/dsh-sound-cues.git D:\DSH\plugins\dsh-sound-cues
+```
+
+**① 改 profile 的 `package.json`**（`<DSH_HOME>\profiles\<profile>\package.json`，
+桌面版默认 `<DSH_HOME>` 是 `C:\Users\<你>\.dsh`、profile 是 `desktop`）：
+
+```jsonc
+"dependencies": {
+  "dsh-sound-cues": "link:D:/DSH/plugins/dsh-sound-cues",   // ← 加这一行
+  ...
+},
+"dsh": { "profile": { "bundles": [
+  ...
+  "dsh-sound-cues"                                          // ← 再加这一条
+] } }
+```
+
+**② 让 `node_modules` 里出现这个包**（二选一）：
+
+```powershell
+# 方式 A：用 pnpm（官方路径）
+& '<DSH>\resources\runtime\primary-runtime\dependencies\node\bin\node.exe' `
+  '<DSH>\resources\runtime\pnpm\bin\pnpm.mjs' `
+  install --dir "$env:USERPROFILE\.dsh\profiles\desktop"
+
+# 方式 B：直接建 junction（不联网、不会连带改动别的依赖，推荐）
+New-Item -ItemType Junction `
+  -Path   "$env:USERPROFILE\.dsh\profiles\desktop\node_modules\dsh-sound-cues" `
+  -Target 'D:\DSH\plugins\dsh-sound-cues'
+```
+
+**③ 重启 DSH**（退出应用再打开），然后刷新页面。
+
+> **不要**再往 profile 的 `cordis.patch.yml` 里加本插件的行 —— 本包通过自己的
+> `dsh.bundle.patch` 自装配一条**顶层** insert，两边都插会触发重复注册。
+> insert 必须是**顶层**：`@deepseek-ai/dsh-client-modules` 只扫 enabled 的顶层
+> Loader 条目来组合浏览器启动图，挂在 preset 的 `config.plugins` 之类嵌套行里
+> 的插件它扫不到，`dsh.client` 永远不会被服务成 bundle —— 表现是「设置里没有
+> 这一页」而且**不报任何错**。
+
+装好后验证：设置侧栏应出现「提示音」；或跑一条
+
+```powershell
+(Invoke-WebRequest 'http://127.0.0.1:19387/sound-cues/state' -UseBasicParsing).Content
+```
+
+看到 `"client": {"slots": {"settings":"ok", ...}}` 就说明网页半边也起来了。
+
+### 5.2 本机当前的安装状态（已完成）
 
 ```
 D:\DSH\plugins\dsh-sound-cues            ← 源码 + 产物（无构建步骤）
@@ -259,7 +320,7 @@ D:\DSH\plugins\dsh-sound-cues            ← 源码 + 产物（无构建步骤�
   ├─ lib/client.js                       浏览器半边（单文件 classic script 封套）
   ├─ assets/custom/                      用户上传的音效落这里
   ├─ state.json                          设置落盘（运行后生成）
-  └─ test/                               三个自检脚本，共 150 条断言
+  └─ test/                               四套自检脚本，共 256 条断言
 ```
 
 已写入 desktop profile：
