@@ -100,6 +100,8 @@ const documentStub = {
   head: { appendChild: (el) => styleTags.push(el) },
   documentElement: { appendChild: (el) => styleTags.push(el) },
   getElementById: (id) => styleTags.find((t) => t.id === id) || null,
+  hidden: false,
+  visibilityState: 'visible',
   createElement(tag) {
     return {
       tagName: String(tag).toUpperCase(),
@@ -130,8 +132,11 @@ globalThis.document = documentStub
 /* ── 桩：fetch（宿主不在，全部失败也没关系 —— 插件必须优雅降级） ── */
 const fetchCalls = []
 globalThis.fetch = (url, opts) => {
-  fetchCalls.push({ url: String(url), method: (opts && opts.method) || 'GET' })
+  fetchCalls.push({ url: String(url), method: (opts && opts.method) || 'GET', body: opts && opts.body })
   if (String(url).indexOf('/hello') >= 0) {
+    return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) })
+  }
+  if (String(url).indexOf('/config') >= 0) {
     return Promise.resolve({ ok: true, json: () => Promise.resolve({ ok: true }) })
   }
   return Promise.reject(new Error('offline-stub'))
@@ -363,6 +368,27 @@ console.log('\n== 心跳：网页半边向宿主报到 ==')
 const hello = fetchCalls.find((c) => c.url.indexOf('/hello') >= 0)
 ok('apply 时 POST 了 /sound-cues/hello', !!hello && hello.method === 'POST', JSON.stringify(fetchCalls.slice(0, 6)))
 ok('启动时也拉了 /sound-cues/events（长轮询）', fetchCalls.some((c) => c.url.indexOf('/events') >= 0), JSON.stringify(fetchCalls.map((c) => c.url)))
+
+console.log('\n== 投递回执（后台/最小化场景的判据） ==')
+{
+  const before = fetchCalls.length
+  internal.cueBus.publish({ id: 4242, cue: 'turn.error', detail: '回执测试' })
+  const post = fetchCalls.slice(before).find((c) => c.url.indexOf('/config') >= 0 && c.method === 'POST')
+  ok('收到 cue 后回报了 /sound-cues/config', !!post, JSON.stringify(fetchCalls.slice(before)))
+  if (post && post.body) {
+    let payload = null
+    try {
+      payload = JSON.parse(post.body)
+    } catch (e) {
+      /* ignore */
+    }
+    const d = payload && payload.config && payload.config.__diag
+    ok('回执带 lastCue / lastCueId / at', !!d && d.lastCue === 'turn.error' && d.lastCueId === 4242 && typeof d.at === 'number', JSON.stringify(d))
+    ok('回执带窗口可见性（分辨「没送到」还是「送到了没出声」）', !!d && typeof d.hidden === 'boolean', JSON.stringify(d))
+    ok('回执带 AudioContext 状态', !!d && typeof d.audio === 'string', JSON.stringify(d))
+    ok('回执带累计计数（宿主只留最后一条，计数看得出总共收到几条）', !!d && typeof d.count === 'number' && d.count >= 1, JSON.stringify(d))
+  }
+}
 
 console.log('\n== 真的把组件树渲染一遍（最小 React hook 语义） ==')
 const SettingsPanelComp = byName['settings.section'].comp
